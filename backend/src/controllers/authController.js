@@ -78,6 +78,21 @@ exports.register = (req, res) => {
   );
 };
 
+exports.deleteUser = (req, res) => {
+  const { id } = req.params;
+
+  db.query("DELETE FROM users WHERE id = ?", [id], (err, result) => {
+    if (err) return res.status(500).json({ message: "DB error", err });
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "User tidak ditemukan" });
+    }
+
+    res.json({ message: "User berhasil dihapus" });
+  });
+};
+
+
 // LOGIN
 exports.login = (req, res) => {
   const { email, password } = req.body;

@@ -1,0 +1,19 @@
+import { auth } from "@/firebase/firebase";
+import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
+import api from "./api";
+
+export const loginWithGoogle = async () => {
+  const provider = new GoogleAuthProvider();
+  const result = await signInWithPopup(auth, provider);
+
+  const token = await result.user.getIdToken();
+
+  // kirim ke backend
+  await api.post("/auth/firebase", {}, {
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  });
+
+  localStorage.setItem("token", token);
+};

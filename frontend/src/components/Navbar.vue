@@ -110,8 +110,10 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { auth } from '@/firebase/firebase'
+import { onAuthStateChanged, signOut } from 'firebase/auth'
 import logoSigma from '@/assets/Logo.png'
 
 const route = useRoute()
@@ -122,20 +124,34 @@ const navbarVisible = ref(false)
 const logoColor = '#5B8A62'
 
 const isLoggedIn = ref(false)
+let unsubscribeAuth = null
 
 onMounted(() => {
-  isLoggedIn.value = !!localStorage.getItem("token")
-  setTimeout(() => navbarVisible.value = true, 100)
+  // 🔥 listen Firebase auth state
+  unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+    isLoggedIn.value = !!user
+  })
+
+  setTimeout(() => {
+    navbarVisible.value = true
+  }, 100)
 })
 
-const logout = () => {
-  localStorage.removeItem("token")
+onUnmounted(() => {
+  if (unsubscribeAuth) unsubscribeAuth()
+})
+
+// 🔥 LOGOUT (Firebase + localStorage)
+const logout = async () => {
+  await signOut(auth)
+  localStorage.removeItem('token')
   isLoggedIn.value = false
-  router.push("/Sign_In")
+  router.push('/Sign_In')
 }
 
-const closeMenu = () => menuOpen.value = false
+const closeMenu = () => (menuOpen.value = false)
 
+// Tombol login / signup
 const buttonText = computed(() => {
   if (isLoggedIn.value) return ''
   if (route.name === 'Sign In') return 'Sign Up'
@@ -156,6 +172,7 @@ const active = (path) => {
     : 'text-gray-700 hover:text-[#5B8A62]'
 }
 </script>
+
 
 <style scoped>
 .slide-enter-active,

@@ -1,9 +1,14 @@
 const express = require("express");
 const router = express.Router();
-const auth = require("../controllers/authController");
 
-router.post("/register", auth.register);
-router.post("/login", auth.login);
-router.post("/google", auth.googleLogin);
+const authController = require("../controllers/authController");
+const firebaseAuth = require("../middleware/firebaseAuth");
+
+router.post(
+  "/sync-user",
+  firebaseAuth,
+  authController.syncUser
+);
+
 
 module.exports = router;

@@ -1,61 +1,96 @@
 <script setup>
-import { ref, computed, onMounted } from "vue";
-import axios from "axios";
-import { useRouter } from "vue-router";
-import Navbar from "@/components/Navbar.vue";
+import { ref, computed } from "vue"
+import { useRouter } from "vue-router"
+import axios from "axios"
+import Navbar from "@/components/Navbar.vue"
 
-const router = useRouter();
+// 🔥 Firebase
+import { auth } from "@/firebase/firebase"
+import {
+  signInWithEmailAndPassword,
+  GoogleAuthProvider,
+  signInWithPopup
+} from "firebase/auth"
 
-// Form states
-const email = ref("");
-const password = ref("");
-const errorMessage = ref("");
+const router = useRouter()
 
-// Validation state
+// ===============================
+// FORM STATE
+// ===============================
+const email = ref("")
+const password = ref("")
+const errorMessage = ref("")
+
 const isFormValid = computed(() => {
-  return email.value.trim() !== "" && password.value.trim() !== "";
-});
+  return email.value.trim() !== "" && password.value.trim() !== ""
+})
 
-// === NORMAL LOGIN FUNCTION ===
+// ===============================
+// SYNC USER KE MYSQL
+// ===============================
+const syncUserToDB = async (token) => {
+  try {
+    await axios.post(
+      "http://localhost:3000/auth/sync-user",
+      {},
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    )
+  } catch (err) {
+    console.error("Sync user gagal", err)
+  }
+}
+
+// ===============================
+// EMAIL / PASSWORD LOGIN
+// ===============================
 const login = async () => {
   try {
-    const response = await axios.post("http://localhost:3000/auth/login", {
-      email: email.value,
-      password: password.value,
-    });
+    const userCredential = await signInWithEmailAndPassword(
+      auth,
+      email.value,
+      password.value
+    )
 
-    localStorage.setItem("token", response.data.token);
+    const token = await userCredential.user.getIdToken()
 
-    router.push("/Profile");
+    localStorage.setItem("token", token)
+
+    // 🔥 WAJIB DI SINI
+    await syncUserToDB(token)
+
+    router.push("/Profile")
   } catch (error) {
-    errorMessage.value =
-      error.response?.data?.message || "Login gagal. Periksa kembali.";
+    errorMessage.value = "Login gagal. Email atau password salah."
   }
-};
+}
 
-// === GOOGLE LOGIN ===
-const handleGoogleLogin = () => {
-  google.accounts.id.initialize({
-    client_id: "630928549264-flfdbun187i82r22ribj62b97rl366ki.apps.googleusercontent.com",
-    callback: async (response) => {
-      try {
-        const res = await axios.post("http://localhost:3000/auth/google", {
-          token: response.credential,
-        });
+// ===============================
+// GOOGLE LOGIN
+// ===============================
+const handleGoogleLogin = async () => {
+  try {
+    const provider = new GoogleAuthProvider()
 
-        localStorage.setItem("token", res.data.token);
+    const result = await signInWithPopup(auth, provider)
+    const token = await result.user.getIdToken()
 
-        router.push("/Profile");
-      } catch (err) {
-        console.error(err);
-        errorMessage.value = "Login dengan Google gagal.";
-      }
-    },
-  });
+    localStorage.setItem("token", token)
 
-  google.accounts.id.prompt(); // popup Google
-};
+    // 🔥 WAJIB DI SINI
+    await syncUserToDB(token)
+
+    router.push("/Profile")
+  } catch (err) {
+    errorMessage.value = "Login dengan Google gagal"
+  }
+}
 </script>
+
+
 
 <template>
   <div class="min-h-screen flex flex-col overflow-hidden">

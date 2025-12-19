@@ -1,5 +1,3 @@
-const db = require("../config/db");
-
 exports.syncUser = (req, res) => {
   const { uid, email, name } = req.firebaseUser;
 
@@ -26,4 +24,3 @@ exports.syncUser = (req, res) => {
     }
   );
 };
-

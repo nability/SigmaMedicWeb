@@ -10,5 +10,7 @@ router.post(
   authController.syncUser
 );
 
+router.get('/me', firebaseAuth, authController.getUserProfile);
+
 
 module.exports = router;

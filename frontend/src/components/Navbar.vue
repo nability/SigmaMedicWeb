@@ -1,187 +1,127 @@
 <template>
   <nav
-    class="bg-[#A5C79B] text-sm w-full fixed top-0 left-0 z-50 opacity-0 -translate-y-5 transition-all duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]"
+    class="bg-[#A5C79B] text-sm w-full fixed top-0 left-0 z-50 transition-all duration-500"
     :class="{ 'opacity-100 translate-y-0': navbarVisible }"
   >
-    <!-- Top bar -->
-    <div class="flex justify-center items-center px-6 py-2 text-white text-center">
-      <div class="flex items-center gap-2 flex-wrap justify-center">
+    <div class="hidden md:flex justify-center items-center px-6 py-2 text-white text-center bg-[#8FB584]">
+      <div class="flex items-center gap-2">
         <span>📧 contact@sigmamedic.com</span>
         <span>| ☎ Tel: 888.688.6822</span>
       </div>
     </div>
 
-    <!-- Main Navbar -->
-    <div class="bg-white flex items-center justify-between px-6 md:px-10 py-3 shadow-sm relative">
+    <div class="bg-white flex items-center justify-between px-6 md:px-10 py-3 shadow-md relative">
 
-      <!-- Logo -->
-      <router-link to="/" class="flex items-center gap-[4px] group">
-        <img
-          :src="logoSigma"
-          class="w-10 h-10 object-contain transition-transform duration-200 group-hover:scale-105"
-        />
-        <span class="font-bold text-lg tracking-tight" :style="{ color: logoColor }">
-          Sigma&nbsp;Medic
-        </span>
+      <router-link to="/" class="flex items-center gap-2 group">
+        <img :src="logoSigma" class="w-10 h-10 object-contain group-hover:scale-105 transition" />
+        <span class="font-bold text-lg text-[#5B8A62]">Sigma Medic</span>
       </router-link>
 
-      <!-- Hamburger -->
-      <button @click="menuOpen = !menuOpen" class="md:hidden">
-        <svg v-if="!menuOpen" class="w-6 h-6 text-gray-700" fill="none" stroke="currentColor">
-          <path stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
-        </svg>
-        <svg v-else class="w-6 h-6 text-gray-700" fill="none" stroke="currentColor">
-          <path stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-        </svg>
-      </button>
-
-      <!-- Desktop Menu -->
-      <ul class="hidden md:flex items-center gap-8 font-medium">
-        <li><router-link to="/" class="nav-item" :class="active('/')">Beranda</router-link></li>
-        <li><router-link to="/Profile" class="nav-item" :class="active('/Profile')">Profile</router-link></li>
-        <li><router-link to="/Produk" class="nav-item" :class="active('/Produk')">Produk</router-link></li>
-        <li><router-link to="/kontak" class="nav-item" :class="active('/kontak')">Kontak</router-link></li>
+      <ul class="hidden md:flex items-center gap-8 font-medium text-gray-600">
+        <li><router-link to="/" active-class="text-green-600 font-bold">Beranda</router-link></li>
+        <li><router-link to="/tentang-kami" active-class="text-green-600 font-bold">Tentang Kami</router-link></li>
+        <li><router-link to="/Produk" active-class="text-green-600 font-bold">Produk</router-link></li>
+        <li><router-link to="/Kontak" active-class="text-green-600 font-bold">Kontak</router-link></li>
       </ul>
 
-      <!-- RIGHT SIDE BUTTON -->
-      <div class="hidden md:flex items-center gap-4">
+      <div class="flex items-center gap-4">
 
-        <!-- Jika sudah login -->
-        <template v-if="isLoggedIn">
-          <router-link
-            to="/Profile"
-            class="text-[#5B8A62] font-medium hover:underline"
-          >
-            Profile
-          </router-link>
-
-          <button
-            @click="logout"
-            class="bg-red-500 text-white px-4 py-2 rounded-full hover:bg-red-600 transition"
-          >
-            Logout
+        <div v-if="isLoggedIn" class="relative">
+          <button @click="toggleDropdown" class="flex items-center gap-2 focus:outline-none">
+            <span class="hidden md:block text-gray-700 font-medium text-sm text-right">
+              Halo, {{ userName }}
+            </span>
+            <img
+              :src="userPhoto || 'https://ui-avatars.com/api/?name=' + userName + '&background=random'"
+              class="w-9 h-9 rounded-full border border-gray-300 shadow-sm hover:ring-2 hover:ring-green-400 transition"
+            />
           </button>
-        </template>
 
-        <!-- Jika belum login -->
-        <template v-else>
-          <router-link
-            :to="buttonLink"
-            class="bg-[#A5C79B] text-white px-5 py-2 rounded-full shadow hover:shadow-lg transition"
-          >
-            {{ buttonText }}
-          </router-link>
-        </template>
+          <div v-if="dropdownOpen" class="absolute right-0 mt-3 w-48 bg-white rounded-lg shadow-xl py-2 border border-gray-100 z-50">
+            <div class="px-4 py-2 border-b border-gray-100 md:hidden">
+              <p class="text-xs text-gray-500">Login sebagai</p>
+              <p class="font-semibold text-gray-800 truncate">{{ userName }}</p>
+            </div>
 
-      </div>
+            <router-link
+              to="/akun"
+              @click="dropdownOpen = false"
+              class="block px-4 py-2 text-sm text-gray-700 hover:bg-green-50 hover:text-green-700 transition"
+            >
+              Dashboard Saya
+            </router-link>
 
-    </div> <!-- END MAIN NAVBAR -->
+            <div class="border-t border-gray-100 my-1"></div>
 
-    <!-- Mobile Dropdown -->
-    <transition name="slide">
-      <div
-        v-if="menuOpen"
-        class="md:hidden bg-white shadow-lg flex flex-col items-center gap-4 py-4 border-t border-gray-200"
-      >
-        <router-link to="/" class="hover:text-green-600" @click="closeMenu">Beranda</router-link>
-        <router-link to="/Profile" class="hover:text-green-600" @click="closeMenu">Profile</router-link>
-        <router-link to="/Produk" class="hover:text-green-600" @click="closeMenu">Produk</router-link>
-        <router-link to="/kontak" class="hover:text-green-600" @click="closeMenu">Kontak</router-link>
+            <button
+              @click="handleLogout"
+              class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition"
+            >
+              Logout
+            </button>
+          </div>
 
-        <!-- logged in -->
-        <div v-if="isLoggedIn" class="flex flex-col items-center gap-2">
-          <router-link to="/Profile" @click="closeMenu">Profile</router-link>
-          <button @click="() => { logout(); closeMenu(); }"
-                  class="bg-red-500 text-white px-5 py-2 rounded-full shadow hover:bg-red-600">
-            Logout
-          </button>
+          <div v-if="dropdownOpen" @click="dropdownOpen = false" class="fixed inset-0 z-40 cursor-default"></div>
         </div>
 
-        <!-- not logged in -->
-        <router-link v-else :to="buttonLink"
-          class="bg-[#A5C79B] text-white px-5 py-2 rounded-full shadow hover:bg-green-600"
-          @click="closeMenu"
-        >
-          {{ buttonText }}
-        </router-link>
+        <template v-else>
+          <router-link
+            to="/Sign_In"
+            class="hidden md:block bg-[#5B8A62] text-white px-5 py-2 rounded-full font-medium hover:bg-[#4a7550] transition shadow-md hover:shadow-lg"
+          >
+            Login / Daftar
+          </router-link>
+          <button @click="menuOpen = !menuOpen" class="md:hidden">
+             <svg class="w-7 h-7 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+          </button>
+        </template>
+
       </div>
-    </transition>
+    </div>
   </nav>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { ref, onMounted, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { auth } from '@/firebase/firebase'
 import { onAuthStateChanged, signOut } from 'firebase/auth'
 import logoSigma from '@/assets/Logo.png'
 
-const route = useRoute()
 const router = useRouter()
-
-const menuOpen = ref(false)
 const navbarVisible = ref(false)
-const logoColor = '#5B8A62'
-
 const isLoggedIn = ref(false)
-let unsubscribeAuth = null
+const dropdownOpen = ref(false)
+const menuOpen = ref(false)
 
-onMounted(() => {
-  // 🔥 listen Firebase auth state
-  unsubscribeAuth = onAuthStateChanged(auth, (user) => {
-    isLoggedIn.value = !!user
-  })
+// State data user sederhana untuk Navbar
+const userName = ref('User')
+const userPhoto = ref(null)
 
-  setTimeout(() => {
-    navbarVisible.value = true
-  }, 100)
-})
+const toggleDropdown = () => {
+  dropdownOpen.value = !dropdownOpen.value
+}
 
-onUnmounted(() => {
-  if (unsubscribeAuth) unsubscribeAuth()
-})
-
-// 🔥 LOGOUT (Firebase + localStorage)
-const logout = async () => {
+const handleLogout = async () => {
+  dropdownOpen.value = false
   await signOut(auth)
   localStorage.removeItem('token')
   isLoggedIn.value = false
   router.push('/Sign_In')
 }
 
-const closeMenu = () => (menuOpen.value = false)
+onMounted(() => {
+  onAuthStateChanged(auth, (user) => {
+    if (user) {
+      isLoggedIn.value = true
+      // Ambil nama depan saja biar tidak kepanjangan di navbar
+      userName.value = user.displayName || user.email.split('@')[0]
+      userPhoto.value = user.photoURL
+    } else {
+      isLoggedIn.value = false
+    }
+  })
 
-// Tombol login / signup
-const buttonText = computed(() => {
-  if (isLoggedIn.value) return ''
-  if (route.name === 'Sign In') return 'Sign Up'
-  if (route.name === 'Sign Up') return 'Sign In'
-  return 'Login'
+  setTimeout(() => navbarVisible.value = true, 100)
 })
-
-const buttonLink = computed(() => {
-  if (isLoggedIn.value) return ''
-  if (route.name === 'Sign In') return '/Sign_Up'
-  if (route.name === 'Sign Up') return '/Sign_In'
-  return '/Sign_In'
-})
-
-const active = (path) => {
-  return route.path === path
-    ? 'text-[#5B8A62] underline underline-offset-4'
-    : 'text-gray-700 hover:text-[#5B8A62]'
-}
 </script>
-
-
-<style scoped>
-.slide-enter-active,
-.slide-leave-active {
-  transition: all 0.4s ease;
-}
-.slide-enter-from,
-.slide-leave-to {
-  opacity: 0;
-  transform: translateY(-10px);
-}
-</style>

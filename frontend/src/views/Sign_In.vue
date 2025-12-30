@@ -44,25 +44,23 @@ const syncUserToDB = async (token) => {
   }
 }
 
+// ... import lainnya
+
 // ===============================
 // EMAIL / PASSWORD LOGIN
 // ===============================
 const login = async () => {
   try {
-    const userCredential = await signInWithEmailAndPassword(
-      auth,
-      email.value,
-      password.value
-    )
-
+    const userCredential = await signInWithEmailAndPassword(auth, email.value, password.value)
     const token = await userCredential.user.getIdToken()
-
     localStorage.setItem("token", token)
 
-    // 🔥 WAJIB DI SINI
+    // Sync ke DB
     await syncUserToDB(token)
 
-    router.push("/Profile")
+    // 🔥 UBAH BAGIAN INI (Dulu "/Profile")
+    router.push("/Beranda")
+
   } catch (error) {
     errorMessage.value = "Login gagal. Email atau password salah."
   }
@@ -74,16 +72,16 @@ const login = async () => {
 const handleGoogleLogin = async () => {
   try {
     const provider = new GoogleAuthProvider()
-
     const result = await signInWithPopup(auth, provider)
     const token = await result.user.getIdToken()
-
     localStorage.setItem("token", token)
 
-    // 🔥 WAJIB DI SINI
+    // Sync ke DB
     await syncUserToDB(token)
 
-    router.push("/Profile")
+    // 🔥 UBAH BAGIAN INI JUGA
+    router.push("/Beranda")
+
   } catch (err) {
     errorMessage.value = "Login dengan Google gagal"
   }

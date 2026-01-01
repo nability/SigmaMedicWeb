@@ -1,30 +1,28 @@
-const db = require("../config/db").promise(); // Pastikan pakai .promise() jika pakai mysql2
+const db = require("../config/db").promise(); // Pastikan pakai .promise()
 
+// 1. Sync User (Login/Register)
 exports.syncUser = async (req, res) => {
-  // 1. Ambil data dari middleware (req.user)
   const { uid, email, name } = req.user; 
 
   try {
-    // 2. Cek apakah user sudah ada?
+    // Cek user existing
     const [rows] = await db.query("SELECT * FROM users WHERE firebase_uid = ?", [uid]);
 
     if (rows.length > 0) {
-      // User sudah ada, kita update saja 'last_login' (opsional) atau return sukses
       return res.status(200).json({ 
         message: "User synced (existing)", 
         user: rows[0] 
       });
     }
 
-    // 3. Jika belum ada, Insert user baru
+    // Insert user baru
     const insertQuery = `
       INSERT INTO users (name, email, firebase_uid, role, created_at) 
       VALUES (?, ?, ?, 'user', NOW())
     `;
     
-    await db.query(insertQuery, [name, email, uid]);
+    await db.query(insertQuery, [name || 'User', email, uid]);
 
-    // 4. Ambil data user yang baru dibuat untuk dikembalikan ke frontend
     const [newUser] = await db.query("SELECT * FROM users WHERE firebase_uid = ?", [uid]);
 
     res.status(201).json({ 
@@ -38,8 +36,9 @@ exports.syncUser = async (req, res) => {
   }
 };
 
+// 2. Get User Profile (Single User)
 exports.getUserProfile = async (req, res) => {
-  const { uid } = req.user; // Dari middleware
+  const { uid } = req.user; 
 
   try {
     const [rows] = await db.query(
@@ -53,6 +52,34 @@ exports.getUserProfile = async (req, res) => {
 
     res.json(rows[0]);
   } catch (err) {
+    console.error(err);
     res.status(500).json({ message: "Server Error" });
+  }
+};
+
+// 3. [ADMIN] Ambil Semua User (DIPERBAIKI)
+exports.getAllUsers = async (req, res) => {
+  try {
+    // 🔥 UBAH JADI ASYNC/AWAIT
+    const [rows] = await db.query("SELECT id, name, email, role, created_at FROM users ORDER BY created_at DESC");
+    res.json(rows);
+  } catch (err) {
+    console.error("Gagal ambil users:", err);
+    res.status(500).json({ message: "Database Error" });
+  }
+};
+
+// 4. [ADMIN] Ganti Role User (DIPERBAIKI)
+exports.updateUserRole = async (req, res) => {
+  const { id } = req.params;
+  const { role } = req.body; 
+  
+  try {
+    // 🔥 UBAH JADI ASYNC/AWAIT
+    await db.query("UPDATE users SET role = ? WHERE id = ?", [role, id]);
+    res.json({ message: "Role user berhasil diubah" });
+  } catch (err) {
+    console.error("Gagal update role:", err);
+    res.status(500).json({ message: "Gagal update role" });
   }
 };

@@ -1,46 +1,36 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { auth } from '@/firebase/firebase'
+import axios from 'axios'
 
-// === IMPORT VIEWS ===
+// Import Views
 import Sign_In from '../views/Sign_In.vue'
 import Sign_Up from '../views/Sign_Up.vue'
 import Beranda from '../views/Beranda.vue'
 import Produk from '../views/Produk.vue'
-import TentangKami from '../views/TentangKami.vue'   // Halaman Profil Perusahaan (Public)
-import UserDashboard from '../views/UserDashboard.vue' // Halaman Akun User (Private)
-import Kontak from '../views/Kontak.vue' // Pastikan file ini ada jika ingin dipakai
+import TentangKami from '../views/TentangKami.vue'
+import UserDashboard from '../views/UserDashboard.vue'
+import AdminDashboard from '../views/AdminDashboard.vue' // Pastikan file ini ada
+import Kontak from '../views/Kontak.vue'
 
 const routes = [
-  // 1. Redirect root ke Beranda
   { path: '/', redirect: '/Beranda' },
-
-  // 2. Halaman PUBLIC (Bisa diakses siapa saja)
   { path: '/Beranda', name: 'Beranda', component: Beranda },
   { path: '/Produk', name: 'Produk', component: Produk },
   { path: '/tentang-kami', name: 'TentangKami', component: TentangKami },
   { path: '/Kontak', name: 'Kontak', component: Kontak },
 
-  // 3. Halaman GUEST (Hanya untuk yang BELUM login)
-  {
-    path: '/Sign_In',
-    name: 'Sign_In',
-    component: Sign_In,
-    meta: { requiresGuest: true }
-  },
-  {
-    path: '/Sign_Up',
-    name: 'Sign_Up',
-    component: Sign_Up,
-    meta: { requiresGuest: true }
-  },
+  // Auth Routes
+  { path: '/Sign_In', name: 'Sign_In', component: Sign_In, meta: { requiresGuest: true } },
+  { path: '/Sign_Up', name: 'Sign_Up', component: Sign_Up, meta: { requiresGuest: true } },
 
-  // 4. Halaman USER (Hanya untuk yang SUDAH login)
+  // Protected Routes
+  { path: '/akun', name: 'UserDashboard', component: UserDashboard, meta: { requiresAuth: true } },
   {
-    path: '/akun',
-    name: 'UserDashboard',
-    component: UserDashboard,
-    meta: { requiresAuth: true }
-  },
+    path: '/admin',
+    name: 'AdminDashboard',
+    component: AdminDashboard,
+    meta: { requiresAuth: true, requiresAdmin: true }
+  }
 ]
 
 const router = createRouter({
@@ -48,27 +38,41 @@ const router = createRouter({
   routes,
 })
 
-// === NAVIGATION GUARD ===
+// === NAVIGATION GUARD PINTAR ===
 router.beforeEach(async (to, from, next) => {
   const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
   const requiresGuest = to.matched.some(record => record.meta.requiresGuest)
+  const requiresAdmin = to.matched.some(record => record.meta.requiresAdmin)
 
-  // Tunggu Firebase cek status user dulu
   const currentUser = await getCurrentUser()
 
+  // Cek Role dari LocalStorage (lebih cepat daripada request ulang)
+  const role = localStorage.getItem('user_role')
+
+  // 1. Jika butuh login tapi tidak ada user
   if (requiresAuth && !currentUser) {
-    // Mau ke halaman Akun tapi belum login -> Lempar ke Sign In
     next('/Sign_In')
-  } else if (requiresGuest && currentUser) {
-    // Sudah login tapi coba akses Sign In/Sign Up -> Lempar ke Dashboard Akun
-    next('/akun')
-  } else {
-    // Lanjut ke halaman yang dituju
+  }
+  // 2. Jika halaman Guest (Login/Register) tapi user sudah login
+  else if (requiresGuest && currentUser) {
+    if (role === 'admin') {
+      next('/admin') // Admin dilempar ke Dashboard Admin     } else {
+      next('/akun')  // User biasa dilempar ke Dashboard User
+    }
+  }
+  // 3. Jika halaman khusus Admin
+  else if (requiresAdmin) {
+    if (role !== 'admin') {
+      next('/akun') // User biasa coba akses admin -> tendang ke akun
+    } else {
+      next() // Admin boleh masuk
+    }
+  }
+  else {
     next()
   }
 })
 
-// Helper function untuk menunggu Firebase Auth Ready
 function getCurrentUser() {
   return new Promise((resolve, reject) => {
     const unsubscribe = auth.onAuthStateChanged(user => {

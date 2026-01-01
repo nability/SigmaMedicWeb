@@ -1,12 +1,25 @@
-const express = require("express");
+const express = require('express');
 const router = express.Router();
-const product = require("../controllers/productController");
-const upload = require("../middleware/upload");
+const productController = require('../controllers/productController');
+const firebaseAuth = require('../middleware/firebaseAuth');
+const adminCheck = require('../middleware/adminCheck');
 
-router.get("/", product.getProducts);
-router.post("/", upload.single("image"), product.createProduct);
-router.get("/:id", product.getProductById);
-router.put("/:id", product.updateProduct);
-router.delete("/:id", product.deleteProduct);
+// Setup Multer (Upload Gambar)
+const multer = require('multer');
+const path = require('path');
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, 'uploads/'),
+  filename: (req, file, cb) => cb(null, Date.now() + path.extname(file.originalname))
+});
+const upload = multer({ storage: storage });
+
+// Public
+router.get('/', productController.getAllProducts);
+router.get('/:id', productController.getProductById);
+
+// 🔥 ADMIN ONLY
+router.post('/', firebaseAuth, adminCheck, upload.single('image'), productController.addProduct);
+router.delete('/:id', firebaseAuth, adminCheck, productController.deleteProduct);
+router.put('/:id', firebaseAuth, adminCheck, productController.updateProduct);
 
 module.exports = router;

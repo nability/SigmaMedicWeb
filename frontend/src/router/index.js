@@ -11,6 +11,7 @@ import TentangKami from '../views/TentangKami.vue'
 import UserDashboard from '../views/UserDashboard.vue'
 import AdminDashboard from '../views/AdminDashboard.vue' // Pastikan file ini ada
 import Kontak from '../views/Kontak.vue'
+import PesananSaya from '../views/PesananSaya.vue' // Import file baru
 
 const routes = [
   { path: '/', redirect: '/Beranda' },
@@ -25,6 +26,14 @@ const routes = [
 
   // Protected Routes
   { path: '/akun', name: 'UserDashboard', component: UserDashboard, meta: { requiresAuth: true } },
+
+  {
+    path: '/pesanan-saya',
+    name: 'PesananSaya',
+    component: PesananSaya,
+    meta: { requiresAuth: true } // Wajib Login
+  },
+
   {
     path: '/admin',
     name: 'AdminDashboard',

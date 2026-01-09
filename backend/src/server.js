@@ -9,6 +9,10 @@ const app = express();
 const authRoutes = require("./routes/authRoutes");
 const productRoutes = require("./routes/productRoutes");
 const rfqRoutes = require("./routes/rfqRoutes"); // 🔥 TAMBAHAN BARU 1
+const contactRoutes = require('./routes/contactRoutes'); // Import
+
+// ... routes lainnya ...
+app.use('/contact', contactRoutes); // Daftarkan
 
 app.use(cors());
 app.use(express.json());

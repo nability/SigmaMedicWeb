@@ -18,4 +18,8 @@ router.get('/all', firebaseAuth, adminCheck, rfqController.getAllRFQs);
 // 🔥 Hanya Admin yang boleh proses (Approve/Reject)
 router.put('/:id/process', firebaseAuth, adminCheck, rfqController.processRFQ); 
 
+// ...
+router.get('/my-history', firebaseAuth, rfqController.getMyRFQs); // Endpoint baru
+// ...
+
 module.exports = router;

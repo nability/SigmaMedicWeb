@@ -4,16 +4,27 @@ import axios from 'axios';
 import { auth } from '@/firebase/firebase';
 import Navbar from '@/components/Navbar.vue';
 
-// STATE
+// STATE UTAMA
 const activeTab = ref('rfq');
 const loading = ref(false);
+
+// DATA LISTS
 const rfqs = ref([]);
 const products = ref([]);
 const users = ref([]);
+
+// MODAL STATE: PRODUK
 const showProductModal = ref(false);
 const newProduct = ref({ name: '', description: '', price: 0, stock: 0, image: null });
 
-// FETCH DATA
+// 🔥 MODAL STATE: APPROVAL RFQ (BARU)
+const showApproveModal = ref(false);
+const selectedRfq = ref(null);
+const approvalForm = ref({ price: 0, notes: '' });
+
+/* ================= API CALLS ================= */
+
+// 1. Fetch Data
 const fetchData = async () => {
   loading.value = true;
   try {
@@ -37,8 +48,42 @@ const fetchData = async () => {
   }
 };
 
-// CRUD LOGIC (Sama seperti sebelumnya)
+/* ================= LOGIC RFQ APPROVAL (BARU) ================= */
+
+// Buka Modal Approval
+const openApproveModal = (item) => {
+  selectedRfq.value = item;
+  approvalForm.value = { price: 0, notes: '' }; // Reset form
+  showApproveModal.value = true;
+};
+
+// Kirim Approval ke Backend
+const submitApproval = async () => {
+  if (!selectedRfq.value) return;
+
+  try {
+    const token = await auth.currentUser.getIdToken();
+    await axios.put(`http://localhost:3000/rfq/${selectedRfq.value.id}/process`, {
+      status: 'quotation_sent',
+      price_quote: approvalForm.value.price,
+      admin_notes: approvalForm.value.notes
+    }, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+
+    alert("Berhasil! Email penawaran telah dikirim.");
+    showApproveModal.value = false;
+    fetchData(); // Refresh tabel
+  } catch (err) {
+    console.error(err);
+    alert("Gagal memproses permintaan.");
+  }
+};
+
+/* ================= LOGIC PRODUK & USER ================= */
+
 const handleFileChange = (e) => newProduct.value.image = e.target.files[0];
+
 const submitProduct = async () => {
   try {
     const token = await auth.currentUser.getIdToken();
@@ -53,8 +98,9 @@ const submitProduct = async () => {
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' }
     });
     showProductModal.value = false; fetchData();
-  } catch(err) { alert("Gagal"); }
+  } catch(err) { alert("Gagal tambah produk"); }
 };
+
 const deleteProduct = async (id) => {
   if(confirm("Hapus?")) {
     const token = await auth.currentUser.getIdToken();
@@ -62,6 +108,7 @@ const deleteProduct = async (id) => {
     fetchData();
   }
 };
+
 const toggleRole = async (user) => {
   const newRole = user.role === 'admin' ? 'user' : 'admin';
   if(confirm(`Ubah ke ${newRole}?`)) {
@@ -114,17 +161,43 @@ onMounted(() => setTimeout(() => fetchData(), 1000));
          <div v-if="activeTab === 'rfq'" class="bg-white rounded-lg shadow overflow-hidden">
             <table class="w-full text-left">
               <thead class="bg-gray-50 border-b">
-                <tr><th class="p-4">Tanggal</th><th class="p-4">RS</th><th class="p-4">Produk</th><th class="p-4">Status</th></tr>
+                <tr>
+                    <th class="p-4">Tanggal</th>
+                    <th class="p-4">User / RS</th>
+                    <th class="p-4">Produk</th>
+                    <th class="p-4">Status</th>
+                    <th class="p-4">Aksi</th> </tr>
               </thead>
               <tbody>
                 <tr v-for="item in rfqs" :key="item.id" class="border-b hover:bg-gray-50">
                   <td class="p-4 text-sm">{{ new Date(item.created_at).toLocaleDateString() }}</td>
-                  <td class="p-4 font-bold">{{ item.hospital_name }}</td>
+                  <td class="p-4">
+                      <p class="font-bold text-gray-800">{{ item.hospital_name }}</p>
+                      <p class="text-xs text-gray-500">{{ item.user_name }}</p>
+                  </td>
                   <td class="p-4 text-sm">{{ item.product_name }} (x{{ item.quantity }})</td>
-                  <td class="p-4"><span class="px-2 py-1 rounded text-xs font-bold bg-yellow-100 text-yellow-800">{{ item.status }}</span></td>
+                  <td class="p-4">
+                      <span :class="{
+                          'bg-yellow-100 text-yellow-800': item.status === 'pending',
+                          'bg-green-100 text-green-800': item.status === 'quotation_sent'
+                      }" class="px-2 py-1 rounded text-xs font-bold">
+                          {{ item.status }}
+                      </span>
+                  </td>
+                  <td class="p-4">
+                      <button
+                        v-if="item.status === 'pending'"
+                        @click="openApproveModal(item)"
+                        class="bg-[#5B8A62] text-white px-3 py-1 rounded text-xs hover:bg-green-700 transition"
+                      >
+                        Proses
+                      </button>
+                      <span v-else class="text-gray-400 text-xs italic">Selesai</span>
+                  </td>
                 </tr>
               </tbody>
             </table>
+            <div v-if="rfqs.length === 0" class="p-6 text-center text-gray-500">Belum ada permintaan masuk.</div>
          </div>
 
          <div v-if="activeTab === 'products'" class="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -171,5 +244,36 @@ onMounted(() => setTimeout(() => fetchData(), 1000));
         </form>
       </div>
     </div>
+
+    <div v-if="showApproveModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
+      <div class="bg-white p-6 rounded-lg w-full max-w-sm shadow-xl">
+        <h3 class="text-lg font-bold mb-1 text-gray-800">Setujui Penawaran</h3>
+        <p class="text-xs text-gray-500 mb-4">
+            Produk: {{ selectedRfq?.product_name }} ({{ selectedRfq?.quantity }} Unit)
+        </p>
+
+        <label class="block text-xs font-bold text-gray-500 mb-1">HARGA PENAWARAN (RP)</label>
+        <input
+            v-model="approvalForm.price"
+            type="number"
+            class="w-full border border-gray-300 p-2 rounded mb-3 focus:ring-2 focus:ring-green-500 outline-none"
+            placeholder="Contoh: 1500000"
+        />
+
+        <label class="block text-xs font-bold text-gray-500 mb-1">CATATAN ADMIN</label>
+        <textarea
+            v-model="approvalForm.notes"
+            class="w-full border border-gray-300 p-2 rounded mb-4 focus:ring-2 focus:ring-green-500 outline-none"
+            rows="3"
+            placeholder="Pesan untuk user..."
+        ></textarea>
+
+        <div class="flex justify-end gap-2">
+          <button @click="showApproveModal = false" class="text-gray-500 text-sm hover:bg-gray-100 px-3 py-2 rounded transition">Batal</button>
+          <button @click="submitApproval" class="bg-green-600 text-white px-4 py-2 rounded text-sm hover:bg-green-700 transition shadow">Kirim Invoice</button>
+        </div>
+      </div>
+    </div>
+
   </div>
 </template>

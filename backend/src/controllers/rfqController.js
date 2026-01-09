@@ -169,3 +169,32 @@ exports.processRFQ = (req, res) => {
     });
   });
 };
+
+// Ambil RFQ milik user yang sedang login
+exports.getMyRFQs = (req, res) => {
+  const { uid } = req.user; // Dari middleware firebaseAuth
+
+  // Cari user_id dulu berdasarkan firebase_uid
+  db.query("SELECT id FROM users WHERE firebase_uid = ?", [uid], (err, users) => {
+    if (err || users.length === 0) return res.status(404).json({ message: "User not found" });
+
+    const userId = users[0].id;
+
+    // Ambil data RFQ + Nama Produk
+    const query = `
+      SELECT q.*, p.name as product_name, p.image_url 
+      FROM quotations q
+      JOIN products p ON q.product_id = p.id
+      WHERE q.user_id = ?
+      ORDER BY q.created_at DESC
+    `;
+
+    db.query(query, [userId], (err, results) => {
+      if (err) {
+        console.error(err);
+        return res.status(500).json({ message: "Gagal mengambil data pesanan" });
+      }
+      res.json(results);
+    });
+  });
+};
